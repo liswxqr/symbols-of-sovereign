@@ -361,12 +361,19 @@
   .foot-links { display: flex; gap: 32px; }
   .foot-links a { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); transition: color 200ms ease; }
   @media (hover: hover) and (pointer: fine) { .foot-links a:hover { color: var(--fg); } }
-  .wordmark {
+  /* Wordmark: JS fits the font-size so the ink spans exactly the content width */
+  .wordmark { overflow: hidden; user-select: none; }
+  .wordmark span {
+    display: block; width: max-content;
     font-family: var(--display); font-weight: 500; text-transform: uppercase;
-    font-size: 10.4vw; line-height: 0.82; letter-spacing: -0.01em; white-space: nowrap;
+    font-size: 10vw; line-height: 0.82; letter-spacing: -0.01em; white-space: nowrap;
     color: transparent; -webkit-text-stroke: 1px var(--line-strong);
-    margin: 0 0 0 -0.04em; user-select: none;
   }
+  /* Slides in from the left edge when it comes into view */
+  .js .wordmark.reveal { opacity: 1; transform: none; }
+  .js .wordmark.reveal span { transform: translateX(-105%); opacity: 0; }
+  .js .wordmark.reveal.in span { transform: translateX(var(--nudge, 0px)); opacity: 1; transition: transform 1400ms var(--ease-out), opacity 600ms ease; }
+  .wordmark span { transform: translateX(var(--nudge, 0px)); }
   .foot-bottom {
     display: flex; justify-content: space-between; gap: 16px; margin-top: 32px;
     font-family: var(--serif); letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); font-size: 12px;
@@ -745,7 +752,7 @@
       </nav>
     </div>
   </div>
-  <div class="wordmark" aria-hidden="true">Symbols of Sovereign</div>
+  <div class="wrap"><div class="wordmark reveal" aria-hidden="true"><span>Symbols of Sovereign</span></div></div>
   <div class="wrap">
     <div class="foot-bottom"><span>Сімвалы суверэнітэту</span><span>MMXXVI</span></div>
   </div>
@@ -835,6 +842,25 @@
     if (!ticking) { ticking = true; requestAnimationFrame(() => { frame(); ticking = false; }); }
   }, { passive: true });
   addEventListener('resize', frame);
+
+  // Fit the footer wordmark: scale font so the glyph ink (not the text box,
+  // which carries side bearings) fills the column, then nudge it flush left.
+  const wm = document.querySelector('.wordmark');
+  const wmText = wm.querySelector('span');
+  function fitWordmark() {
+    wmText.style.fontSize = '100px';
+    const ctx = document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(wmText);
+    ctx.font = `${cs.fontWeight} 100px ${cs.fontFamily}`;
+    ctx.letterSpacing = cs.letterSpacing;
+    const m = ctx.measureText(wmText.textContent.toUpperCase());
+    const ink = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+    const size = 100 * (wm.clientWidth / ink);
+    wmText.style.fontSize = size + 'px';
+    wmText.style.setProperty('--nudge', (m.actualBoundingBoxLeft * size / 100) + 'px');
+  }
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(fitWordmark);
+  addEventListener('resize', fitWordmark);
   frame();
 
   // Order form (no backend yet — validates and shows confirmation)
